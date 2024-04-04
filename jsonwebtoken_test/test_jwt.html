@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test jwt</title>
+    <style>
+        body,:root{
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .container{
+            width: 500px;
+            height: 350px;
+            margin: calc(50vh - 175px) calc(50vw - 250px);
+            border: 2px solid skyblue;
+            padding: 3px;
+            background-color: skyblue;
+            border-radius: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .item{
+            height: 50px;
+        }
+        label{
+            width: 100px;
+        }
+        input{
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="item">
+            <label for="account">account:</label>
+            <input type="text" id="account" maxlength="20">
+        </div>
+        <div class="item">
+            <label for="password">password:</label>
+            <input type="text" id="password" maxlength="20">
+        </div>
+        <div class="item">
+            <button onclick="defaultLogin()">default_login</button>
+            <button onclick="regist()">regist</button>
+            <button onclick="submitFrom()">login</button>
+        </div>
+    </div>
+    <script>
+        const BASE_URL = 'http://localhost:3000/'
+        const account = document.querySelector('#account')
+        const password = document.querySelector('#password')
+        
+        function defaultLogin(){
+            let token = localStorage.getItem('token')
+            if(!token){
+                alert('没有token，不能使用默认登录')
+                return
+            }
+            fetch(BASE_URL + 'default_login',{
+                method:'post',
+                headers:{
+                    Authorization:token
+                }
+            }).then(res=>res.json()).then(res=>{
+                const {result, msg} = res;
+                if(!result) alert(msg)
+                else{
+                    const {account, token} = res;
+                    localStorage.setItem('token', token)
+                    alert(account + '使用默认登录成功')
+                }
+            }).catch(err=>{
+                alert(err)
+            })
+        }
+
+        function regist(){
+            if(!check()){
+                alert('请检查输入，账号长度3位或以上，密码长度6位或以上')
+                return
+            }
+            console.log(account.value, password.value)
+            fetch(BASE_URL + 'regist',{
+                method:'POST',
+                body:JSON.stringify({
+                    account: account.value, 
+                    password: password.value
+                }),
+                headers:{'Content-Type':'application/json'}
+            }).then(res => res.json()).then(res =>{
+                const {result, msg} = res;
+                if(!result) alert(msg)
+                else{
+                    const {token, account} = res;
+                    localStorage.setItem('token', token)
+                    alert(account + '：注册成功')
+                }
+            }).catch(err=>{
+                alert(err)
+            })
+        }
+
+        function submitFrom(){
+            if(!check()){
+                alert('请检查输入，账号长度3位或以上，密码长度6位或以上')
+                return
+            }
+            console.log(account.value, password.value)
+            fetch(BASE_URL + 'login',{
+                method:'POST',
+                body:JSON.stringify({
+                    account: account.value, 
+                    password: password.value
+                }),
+                headers:{'Content-Type':'application/json'}
+            }).then(res => res.json()).then(res=>{
+                const {result, msg} = res;
+                if(!result){
+                    alert(msg)
+                }else{
+                    const {account, token} = res;
+                    localStorage.setItem('token', token)
+                    alert(account + ': 登录成功')
+                }
+            }).catch(err=>{
+                alert(err)
+            })
+        }
+        function check(){
+            return (account.value.trim().length >= 3 && password.value.trim().length >= 6)
+        }
+    </script>
+</body>
+</html>

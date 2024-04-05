@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=, initial-scale=1.0">
+    <title>大文件分片上传</title>
+    <!-- 引入spark-md5用于生成一个标识文件的值 -->
+    <script src="https://cdn.jsdelivr.net/npm/spark-md5@3.0.2/spark-md5.min.js"></script>
+</head>
+<body>
+    <div>
+        <h2>单文件上传</h2>
+        <input type="file" accept=".zip" class="single-file" multiple="false">
+        <button class="single-submit">文件上传</button>
+        <button class="breakpoint-submit">断点上传</button>
+    </div>
+    <div>
+        <h2>多文件上传</h2>
+        <input type="file" class="multiple-file" multiple="true">
+        <button class="m-submit">多文件上传</button>
+    </div>
+<script>
+    const SINGLE_BASE_PATH = 'http://localhost:3000/single';
+    const MULTIPLE_BASE_PATH = 'http://localhost:3000/multiple'
+
+    const single_file = document.querySelector('.single-file')
+    const single_btn = document.querySelector('.single-submit')
+    const breakpoint_btn = document.querySelector('.breakpoint-submit')
+
+    single_btn.addEventListener('click',async ()=>{
+        if(single_file.files.length < 1){
+            console.log('没有选择文件')
+            return
+        }
+        const file_ = single_file.files[0];
+
+        // name 带类型后缀
+        // size 的单位是字节，除以 1000000 转换单位为M
+        let {name, size} = file_;
+
+        // 大于20M则进行分片上传
+        if(size / 1000000 > 20){
+            // 根据文件内容生成唯一的hash值
+            let fileHash = await calculate_file_hash(file_);
+            // 分片上传
+            uploadFileSlice(file_, name, size, fileHash);
+        }
+        else{
+            // 直接上传
+            uploadFileDirectly(file_, name);
+        }
+    })
+
+    breakpoint_btn.addEventListener('click', async ()=>{
+        if(single_file.files.length < 1){
+            console.log('没有选择文件');
+            return
+        }
+        const file_ = single_file.files[0];
+        const {name, size} = file_;
+        let fileHash = await calculate_file_hash(file_);
+        let existChunk = await checkFileChunkExist(fileHash, name);
+        uploadFileSlice(file_, name, size, fileHash, existChunk.result ? existChunk.exp : null)
+    })
+
+    // 根据文件的内容生成一个唯一的 hash 值
+    const calculate_file_hash = (file)=>{
+        return new Promise((res, rej)=>{
+            const fileReader = new FileReader();
+            fileReader.readAsArrayBuffer(file);
+            fileReader.onload = (e)=>{
+                const spark = new SparkMD5.ArrayBuffer();
+                spark.append(e.target.result);
+                const resHash = spark.end()
+                res(resHash)
+            }
+        })
+    }
+
+    // single; 单文件直接上传
+    const uploadFileDirectly = (file_, name)=>{
+        const formdata = new FormData();
+        formdata.append('file', file_);
+        formdata.append('filename', name);
+
+        fetch(`${SINGLE_BASE_PATH}/upload-directly`,{
+            method:'post',
+            body:formdata,
+            headers:{
+                'File-Name':encodeURIComponent(name)
+            }
+        }).then(res => res.json()).then(res =>{
+            console.log('上传完成')
+        }).catch(err => {
+            console.log('上传失败')
+            console.log(err)
+        })
+    }
+
+    // single; 单文件分片上传, expStart 表示期望从第几个分片开始上传
+    const uploadFileSlice = async (file_, name, size, fileHash, expStart = null)=>{
+        const chunkSize = 1024 * 1024;          // 每次上传 1 M
+        let uploadedTime =  expStart || 0;      // 已经上传了多少次
+        const totalTime = Math.ceil(size / chunkSize);      // 总共应该上传多少次
+        
+        while(uploadedTime < totalTime){
+            let start = chunkSize * uploadedTime;
+            let end = Math.min(size, start + chunkSize);
+            // 获取一个片段
+            const section = file_.slice(start, end);
+
+            const formdata = new FormData();
+            formdata.append('chunk', section);
+            formdata.append('filename', name);
+
+            try{
+                const res = await fetch(`${SINGLE_BASE_PATH}/slice`,{
+                    method:'post',
+                    body:formdata,
+                    headers:{
+                        'File-Name': encodeURIComponent(name),
+                        'Finish-Upload': (uploadedTime === totalTime - 1),
+                        'File-Hash-Flag': `${fileHash}-${uploadedTime}`
+                    }
+                })
+                const result = await res.json();
+                console.log(uploadedTime, result)
+            }catch(err){
+                console.log('单文件分片上传错误', err)
+                return
+            }
+            uploadedTime ++;
+            console.log('###', uploadedTime, totalTime)
+        }
+        if(uploadedTime === totalTime){
+            console.log('文件上传完成')
+        }
+    }
+
+    // single; 检查是否存在该文件分片
+    const checkFileChunkExist = (fileHash, fileName)=>{
+        return fetch(`${SINGLE_BASE_PATH}/check-file-hash`,{
+            headers:{
+                'File-Hash-Flag': `${fileHash}`,
+                'File-Name': encodeURIComponent(fileName)
+            }
+        }).then(res => res.json())
+    }
+
+
+
+    const multiple_file = document.querySelector('.multiple-file');
+    const m_btn = document.querySelector('.m-submit');
+    const m_breakpoint_btn = document.querySelector('.m-breakpoint-submit');
+
+    m_btn.addEventListener('click', ()=>{
+        console.dir(multiple_file)
+        const files = multiple_file.files;
+        // 总大小是多少 MB
+        const totalSize = Array.from(files)
+            .map(file => file.size)
+            .reduce((pre, cur) => pre + cur) / 1024 / 1024;
+        if(totalSize > 20){
+            // 如果总大小大于20M，则分别进行处理
+            // 遍历源文件数组，对大于或等于20M的文件进行单独的分片上传
+            // 过滤出一个按照文件大小由小到大排序的文件数组，其中的每一个文件大小都小于20M
+            let smallFiles = Array.from(files)
+                .filter(file =>file.size < 20 * 1024 * 1024 )
+            smallFiles.sort((a, b) => a.size - b.size)
+            let largeFiles = Array.from(files)
+                .filter(file => file.size >= 20 * 1024 * 1024)
+            console.log(smallFiles, largeFiles)
+
+            // 处理小文件
+            while(smallFiles.length > 0){
+                let tempFiles = [smallFiles[smallFiles.length - 1]];
+                smallFiles.pop();
+                if(smallFiles.length <= 0){
+                    m_uploadFilesDirectly(tempFiles);
+                    console.log('上传多文件1:')
+                    console.log(tempFiles[0].name)
+                }else{
+                    let i = 0;
+                    let totalSize_ = tempFiles[0].size;
+                    for(; i < smallFiles.length ; i++){
+                        if(totalSize_ + smallFiles[i].size < 20 * 1024 * 1024){
+                            tempFiles.push(smallFiles[i]);
+                            totalSize_ += smallFiles[i].size;
+                        }else{
+                            break
+                        }
+                    }
+                    smallFiles.splice(0, i);
+                    m_uploadFilesDirectly(tempFiles);
+                    console.log('上传多文件：')
+                    tempFiles.forEach(e =>{
+                        console.log(e.name)
+                    })
+                }
+            }
+            // 处理大文件
+            largeFiles.forEach(async file => {
+                // 使用断点续传
+                const {name, size} = file;
+                let fileHash = await calculate_file_hash(file);
+                let existChunk = await checkFileChunkExist(fileHash, name);
+                uploadFileSlice(file, name, size, fileHash, existChunk.result ? existChunk.exp : null)
+                console.log('分片上传大文件：', file.name)
+            })
+        }else{
+            m_uploadFilesDirectly(files)
+        }
+    })
+
+    // 多文件直接上传
+    const m_uploadFilesDirectly = (files)=>{
+        const formdata = new FormData();
+        Array.from(files).forEach(file =>{
+            let fileName = encodeURIComponent(file.name)
+            file.filename = fileName;
+            formdata.append(fileName, file)
+        })
+        fetch(`${MULTIPLE_BASE_PATH}/multiple-directly`,{
+            method:'post',
+            body:formdata
+        }).then(res => res.json()).then(res=>{
+            console.log(res)
+        })
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaSource test</title>
+</head>
+<body>
+    <div> <video class="_video_" controls ></video> </div>
+<script>
+    const BASE_PATH = 'http://localhost:3000'
+
+    var video = document.querySelector('._video_');
+
+    var mediaSource = null;
+    var segments = null;            // 视频段数组  [{start:0, end:1}]
+    var totalSegments = 0;          // 总分段数
+    var requestedSegments = [];     // 第 n - 1 段是否请求完成
+    var sourceBuffer = null;
+    var mimeCodec = null;
+    var videoName = null;           // 根据视频的名称来获取视频流
+    var segmentDuration = null;     // 每一段的时长，根据段数和视频总长计算得到，用于控制获取下一个视频流的时机
+    var isUpdating = false;         // 是否正在进行请求和更新
+    var shouldToSegment = 0;        // 每次用户移动视频播放定位到新的位置时，会更新其最大值
+    var dealingSeeking = false;     // 是否正在处理一个 seeking 事件
+
+    if('MediaSource' in window){
+        (async () => {
+            // 获取视频列表
+            let getVideoList = await fetch(`${BASE_PATH}/get-all-video`);
+            let tmp_videoList = await getVideoList.json();
+            let videoList = tmp_videoList.data;
+
+            // 要获取的视频的名字
+            videoName = videoList[1].videoName
+
+            // 获取指定的视频信息
+            let getVideoInfo = await fetch(`${BASE_PATH}/get-video-info/${videoName}`);
+            let videoInfo = await getVideoInfo.json();
+
+            // 视频的分段
+            segments = videoInfo.segments;
+            // 视频的分段数量
+            totalSegments = segments.length;
+            for (var i = 0; i < totalSegments; ++i) requestedSegments[i] = false;
+            mimeCodec = videoInfo.mimeType;
+
+            // 查看是否支持该 mimeCodec
+            if(MediaSource.isTypeSupported(mimeCodec)){
+                mediaSource = new MediaSource;
+                video.src = URL.createObjectURL(mediaSource);
+                mediaSource.addEventListener('sourceopen', sourceOpen);
+            }else{ console.log('不支持的 mimecodes') }
+        })()
+    }else{ console.error('不支持 MediaSource'); }
+
+    function sourceOpen() {
+        sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+
+        // 请求第一个分段
+        fetchAndAddSegment(0)
+
+        // 视频播放的时候会触发该时间
+        video.addEventListener('timeupdate', checkBuffer);
+        // 视频就绪可以播放时会触发该事件
+        video.addEventListener('canplay', function () {
+            // video.duration 是视频的总时长，segmentDuration是每个分段的持续时间
+            segmentDuration = video.duration / totalSegments;
+        });
+        // 用户已移动/跳跃到音频/视频（audio/video）中的新位置时触发；拖动滚动条也会触发（一直触发）
+        video.addEventListener('seeking', seek);
+        video.addEventListener('waiting', dealWaiting)
+        mediaSource.removeEventListener('sourceopen', sourceOpen);
+    };
+
+    // 获取并添加指定长度的视频流
+    async function fetchAndAddSegment(index) {
+        if(isUpdating) return;
+        if(index >= 0 && index < totalSegments && !haveAllSegments() && !sourceBuffer.updating){
+            // 上锁
+            isUpdating = true;
+            let res = await fetch(`${BASE_PATH}/MP4/${videoName}`,{
+                headers:{ 'Range':`bytes=${segments[index].start}-${segments[index].end}` }
+            })
+            let data = await res.arrayBuffer()
+            requestedSegments[index] = true;
+            sourceBuffer.appendBuffer(data);
+            // 解锁
+            isUpdating = false;
+        }
+    };
+
+    // 检查是否需要请求新的段
+    function checkBuffer(){
+        var nextSegment = getNextSegment();
+        if(nextSegment >= totalSegments && haveAllSegments()) {
+            console.log('已是最后一个分段');
+            if(mediaSource.readyState === 'open'){ mediaSource.endOfStream(); }
+            video.removeEventListener('timeupdate', checkBuffer);
+            video.removeEventListener('seeking', seek)
+            video.removeEventListener('waiting', dealWaiting);
+        }else if(shouldFetchNextSegment(nextSegment)){
+            console.log(`请求下一个分段，当前视频时间节点：${video.currentTime}, 下一个分段；${nextSegment}`);
+            fetchAndAddSegment(nextSegment);
+        }
+    };
+
+    // 进度条人为改变时触发
+    const seek = ()=>{
+        console.log('seek')
+        if(haveAllSegments() || mediaSource.readyState != 'open'){ return }
+        else{
+            // 当前的时间节点
+            const currentTime = video.currentTime;
+            // 应该追加到第几段
+            let newShouldToSegment = Math.ceil(currentTime / segmentDuration / 0.5 + 1);
+            // 是否应该获取更多的片段
+            if(newShouldToSegment <= shouldToSegment) return;
+            // 如果应该请求的分段较多，还差一个分段就能完成全部视频的加载，那么直接包含他
+            else shouldToSegment = newShouldToSegment < totalSegments - 2 ? newShouldToSegment : totalSegments - 1;
+            if(dealingSeeking || haveAllSegments()){ return; }
+            else{
+                // 上锁
+                dealingSeeking = true;
+                let i = 0;
+                // 等待上一次更新完
+                while(sourceBuffer.updating){ 
+                    console.log(sourceBuffer.updating);
+                    i ++;
+                    if(i > 1000) return;
+                }
+                // 移除进度条发生变化时的监听事件，避免冲突
+                video.removeEventListener('timeupdate', checkBuffer);
+                // 持续检查并获取视频流片段
+                const continueRequestSegment = ()=>{
+                    checkBuffer()
+                    let nextSegment = getNextSegment();
+                    if(nextSegment > shouldToSegment && requestedSegments[nextSegment - 1] || haveAllSegments()){
+                        console.log('移除 updateend 事件')
+                        sourceBuffer.removeEventListener('updateend', continueRequestSegment);
+                        if(!haveAllSegments()){
+                            console.log('重新添加 timeupdate 事件')
+                            video.addEventListener('timeupdate', checkBuffer);
+                        }
+                        // 解锁
+                        dealingSeeking = false;
+                    }
+                }
+                // 先添加 buffer 追加完成事件
+                sourceBuffer.addEventListener('updateend', continueRequestSegment)
+                // 检查完成后，如果需要请求新的分段，那么会在追加完成新的buffer后触发上面的 updateend 事件
+                checkBuffer();
+            }
+        }
+    }
+
+    // 如果出现等待
+    const dealWaiting = () =>{
+        checkBuffer();
+        video.addEventListener('timeupdate', checkBuffer);
+    }
+
+    // 获取下一个应该请求的分段
+    const getNextSegment = () => {return requestedSegments.lastIndexOf(true) + 1}
+
+    // 是否已获取完所有的分段
+    const haveAllSegments = ()=> {return !requestedSegments.includes(false)}
+
+    // 判断获取下一个分段的时机是否成熟
+    function shouldFetchNextSegment(nextSegment) {
+        return (video.currentTime > segmentDuration * (nextSegment - 1) * 0.5 
+            && !requestedSegments[nextSegment] 
+            && nextSegment < totalSegments) 
+            || !requestedSegments[1];
+    };
+</script>
+</body>
+</html>

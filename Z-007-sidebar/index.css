@@ -1,0 +1,131 @@
+:root {
+  font-family: "Courier New", Courier, monospace;
+}
+* {
+  box-sizing: border-box;
+  overflow: hidden;
+  color: black;
+}
+
+.left-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 175px;
+  height: 100vh;
+  background-color: rgb(246, 246, 246);
+  border-right: 2px solid white;
+  text-align: center;
+  font-size: 1.2rem;
+  transition: left 0.2s linear 0.1s;
+}
+.hide-menu {
+  left: -180px;
+}
+
+/** 导航栏 */
+.left-menu > div:nth-child(1) {
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  border: 0px;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+/** 全部一级菜单 */
+.menu-item {
+  padding: 1rem;
+  width: 100%;
+  font-weight: 800;
+  border-radius: 0.3rem;
+  border-top: 0.1px solid rgb(201, 195, 195);
+  border-bottom: 0.1px solid rgb(201, 195, 195);
+}
+.menu-item:hover {
+  cursor: pointer;
+  background-color: rgb(224, 224, 224);
+}
+
+/** 可打开的菜单 */
+.menu-item-hasChild {
+  position: relative;
+  align-items: center;
+}
+.menu-item-hasChild > p {
+  margin: 0;
+}
+.icon {
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  font-size: 1rem;
+  font-weight: 100;
+  transition: transform 0.3s linear;
+  transform: translate(0, -50%) rotate(90deg) scaleY(1.8);
+  opacity: 0.5;
+  z-index: 2;
+}
+
+/** 可打开的菜单被点击后icon的样式 */
+.reverse-icon {
+  transform: translate(0, -50%) rotate(270deg) scaleY(1.8);
+}
+
+/** 可打开的菜单的直属列表 */
+.menu-first-items {
+  height: 0px;
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+  transition: height 0.3s ease-out 0.1s;
+}
+ul {
+  margin: 0px;
+  padding: 0px;
+}
+.ul-active {
+  height: 140px;
+}
+li {
+  list-style: none;
+}
+.li-text {
+  font-size: 1.1rem;
+  line-height: 35px;
+  height: 35px;
+  width: 70%;
+  margin: 0 auto;
+}
+.li-underline {
+  border-bottom: 0.5px solid rgba(104, 104, 104, 0.2);
+}
+.li-text:hover {
+  background-color: rgb(224, 224, 224);
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+
+/** 展开与关闭导航航 */
+.open-close {
+  position: fixed;
+  padding: 20px;
+  font-size: 2rem;
+  font-weight: bolder;
+  top: 50%;
+  left: 156px;
+  background-color: rgb(246, 246, 246);
+  transition: left 0.2s linear 0.1s, transfrom 0.2s linear 0.1s;
+  transform: translate(0, -50%) perspective(100px) rotateY(70deg) scaleY(1.6);
+}
+.open-close:hover {
+  cursor: pointer;
+  background-color: rgb(200, 200, 200);
+}
+.reverse-condition {
+  margin: 0;
+  left: -20px;
+  transform: translate(0, -50%) perspective(100px) rotateY(70deg) scaleY(1.6)
+    rotateZ(180deg);
+}
+.bg-color {
+  background-color: #fecc90;
+}

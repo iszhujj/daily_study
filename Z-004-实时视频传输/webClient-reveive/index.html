@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>web client(watching)</title>
+    <style>
+        :root,body{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        h1{
+            text-align: center;
+        }
+        #videoElement{
+            width: 900px;
+            border-radius: 10px;
+        }
+    </style>
+    <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+</head>
+<body>
+    <div>
+        <h1>web client(watching)</h1>
+        <video id="videoElement" controls="false" muted="false"></video>
+        <div>
+            <button id="start">start</button>
+            <button id="pause">pause</button>
+        </div>
+    </div>
+<script>
+    fetch('http://localhost:9092/test')
+        .then(res => res.json())
+        .then(data =>{
+            console.log(data);
+        })
+
+    const videoElement = document.querySelector('#videoElement');
+    const start_btn = document.querySelector('#start');
+    const pause_btn = document.querySelector('#pause');
+    var flvPlayer = null;
+
+    if(flvjs.isSupported()) {
+        flvPlayer = flvjs.createPlayer({
+            type: 'flv',
+            isLive: true,
+            url: 'http://localhost:8989/flv/video.flv'      // 拉流的地址
+        });
+        flvPlayer.attachMediaElement(videoElement);
+        flvPlayer.load();
+    }
+
+    const start = flvPlayer ? ()=>{
+        // console.log('start', flvPlayer.statisticsInfo, flvPlayer.mediaInfo, flvPlayer.currentTime);
+        // flvPlayer.load();
+        flvPlayer.play();
+    } : ()=>{};
+    const pause = flvPlayer ? ()=>{
+        // console.log('pause', flvPlayer.statisticsInfo, flvPlayer.mediaInfo, flvPlayer.currentTime);
+        // flvPlayer.unload();
+        flvPlayer.pause();
+    } : ()=>{};
+
+    
+    start_btn.addEventListener('click', start);
+    pause_btn.addEventListener('click', pause);
+
+</script>
+</body>
+</html>

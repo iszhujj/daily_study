@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>避免拼音输入触发 input 的问题</title>
+    <style>
+        .inp{
+            width: 200px;
+            height: 40px;
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <input 
+        type="text"
+        placeholder="请输入"
+        class="inp"
+    >
+<script>
+    const inp = document.querySelector('.inp');
+
+    // 拼音输入法正在输入时
+    inp.addEventListener('compositionstart', () => {
+        console.log('compositionstart');
+    })
+
+    // 拼音输入法输入完成时
+    inp.addEventListener('compositionend', () => {
+        console.log('compositionend');
+    })
+
+    // input 事件（只要输入框里面的内容改变，就会触发，拼音输入时，拼音显示在输入框内也会触发）
+    inp.addEventListener('input', () => {
+        console.log('input');
+    })
+
+    // change 事件
+    // change 事件对于不同的input[type]时，效果会不同
+    // type = text、password: 当用户完成更改，并且失去焦点时触发（根据效果看，就是失去焦点时触发）
+    // type = radio、checkbox: 用户更改选择时马上触发，而不用等失去焦点
+    // type = file: 用户选择完文件后立即触发
+    // type = range: 用户释放鼠标时立即触发
+    inp.addEventListener('change', () => {
+        console.log('change');
+    })
+</script>
+</body>
+</html>

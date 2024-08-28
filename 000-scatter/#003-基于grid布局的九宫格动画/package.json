@@ -1,0 +1,14 @@
+{
+  "name": "003",
+  "version": "1.0.0",
+  "description": "基于grid布局的九宫格动画",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "zjj",
+  "license": "ISC",
+  "dependencies": {
+    "scss": "^0.2.4"
+  }
+}

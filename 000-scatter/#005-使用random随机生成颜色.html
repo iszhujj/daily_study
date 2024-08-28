@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用random随机生成一个颜色</title>
+</head>
+<body>
+    <div style="width: 300px;height: 300px;"></div>
+    <button>change color</button>
+    <script>
+        const getRandomColor = () => {
+            return '#' + Math.random()
+                    .toString(16)           // 转换成十六进制，result: 0.a078fb49cd0
+                    .substring(2, 8)        // 截取第 2 到第 8 位 [2, 8)
+                    .padEnd(6, 0);          // 如果不足 6 位，则向末尾补 0，填充到 6 位
+        }
+        
+        const color = getRandomColor();
+        const div = document.querySelector('div');
+        div.style.backgroundColor = color;
+
+        document.querySelector('button').addEventListener('click', () => {
+            const color = getRandomColor();
+            div.style.backgroundColor = color;
+        })
+    </script>
+</body>
+</html>

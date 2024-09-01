@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- https://developer.mozilla.org/zh-CN/docs/Web/API/IntersectionObserver/IntersectionObserver -->
+    <!-- https://developer.mozilla.org/zh-CN/docs/Web/API/Intersection_Observer_API#thresholds -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntersectionObserver</title>
+    <style>
+        :root, body{
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+        }
+        .container{
+            width: 450px;
+            height: 85vh;
+            border: 2px dotted pink;
+            border-radius: 16px;
+            overflow-x: hidden;
+            overflow-y: auto;
+
+            .svg {
+                width: 200px;
+                height: 200px;
+            }
+            .box {
+                width: 100%;
+                height: 300%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container—1 container"></div>
+    <div class="container-2 container">
+        <div class="box">
+            <img class="svg" data-src="../999-static/image_svg/001.svg" src="" alt="">
+        </div>
+    </div>
+    <script>
+        // 存储 svg 图片的目录
+        const BASE_PATH = '../999-static/image_svg/';
+
+        const container_1 = document.querySelector('.container—1');
+        const container_2 = document.querySelector('.container-2');
+
+        const IO_1 = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                console.log(e);
+                if (e.isIntersecting) {
+                    e.target.src = e.target.dataset.src
+                }
+            })
+        })
+
+        for(let i = 1 ; i <= 20 ; i++) {
+            const img = document.createElement('img');
+            img.setAttribute('data-src', `${BASE_PATH}${(i + '').padStart(3, '0')}.svg`);
+            img.setAttribute('src', '');
+            img.classList.add('svg', `svg-${i}`);
+            container_1.appendChild(img);
+            IO_1.observe(img);
+        }
+
+
+        const IO_2 = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if(e.isIntersecting) {
+                    console.log(e);
+                    e.target.src = e.target.dataset.src;
+                }
+            })
+        }, {
+            threshold: 0.5
+        })
+
+        IO_2.observe(document.querySelector('.cent-svg'));
+
+    </script>
+</body>
+</html>

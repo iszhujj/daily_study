@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="zhujj">
+    <meta name="description" content="2024-9-10">
+    <title>设计一个完善的响应式系统-a</title>
+    <style>
+        .title{
+            color: red;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title"></h1>
+    <input class="inp" type="text" placeholder="修改 dataProxy.content">
+
+    <script>
+        let data = { content: 'Hello', tip: '' };
+
+        const inp = document.querySelector('.inp');
+        const title = document.querySelector('.title');
+
+        // 设置副作用函数；proxyData.content 的内容改变时，title 的内容也改变，那么 proxyData 就是响应式数据
+        const updateTitle = () => { title.innerText = dataProxy.content; }
+
+
+        // 用一个全局变量来存储副作用函数
+        let activeEffect;
+
+        // registEffect 函数用来注册副作用函数
+        const registEffect = (fn) => {
+            // 当调用registEffect 来注册副作用函数时，将对应的副作用函数赋值给activeEffect
+            activeEffect = fn;
+            fn();
+        }
+
+        // 储存副作用函数的桶
+        const effectBucket = new Set();
+
+        // 原数组的代理
+        const dataProxy = new Proxy(
+            data,
+            {
+                // 拦截获取属性值； 目标对象，对应的键
+                get(target, key) {
+                    // 监测拦截到的 get 操作是否属于一个副作用函数，如果是，则将其添加到副作用函数桶中
+                    if(activeEffect) {
+                        effectBucket.add(activeEffect)
+                    }
+                    return target[key];
+                },
+                // 拦截设置属性值；目标对象，目标属性，新值
+                set(target, key, newval) {
+                    target[key] = newval;
+
+                    // 取出对应全部的副作用函数，全部重新执行一次
+                    effectBucket.forEach(fn => fn());
+
+                    // 返回一个布尔值表示是否设置成功
+                    return true;
+                }
+            }
+        )
+        
+        // 初始阶段时，调用 registEffect 来注册副作用函数并执行一次
+        registEffect(updateTitle)
+
+        // 监听input的输入事件，有新的输入时修改代理对象的属性值
+        inp.addEventListener('input', (e) => {
+            dataProxy.content = inp.value;
+        })
+
+        /**
+         * 在上面所实现的响应式系统中仍然存在着一些问题
+         * 比如说接下来我们再给 dataProxy.tip 进行一个赋值，即 set 操作
+         * 此时 effectBucket 中所存储的 effect 函数都会被执行一次
+         * 造成这样的原因是副作用函数与被操作字段之间没有建立明确的联系
+        */
+    </script>
+</body>
+</html>

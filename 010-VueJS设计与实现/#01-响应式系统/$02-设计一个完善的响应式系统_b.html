@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="zhujj">
+    <meta name="description" content="2024-9-10">
+    <title>设计一个完善的响应式系统-b</title>
+    <style>
+        .title{
+            color: red;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title"></h1>
+    <input class="inp" type="text" placeholder="修改 dataProxy.content">
+
+    <script>
+        let data = { content: 'Hello', tip: '' };
+
+        const inp = document.querySelector('.inp');
+        const title = document.querySelector('.title');
+
+        // 设置副作用函数；proxyData.content 的内容改变时，title 的内容也改变，那么 proxyData 就是响应式数据
+        const updateTitle = () => { title.innerText = dataProxy.content; }
+
+
+        // 用一个全局变量来存储副作用函数
+        let activeEffect;
+
+        // registEffect 函数用来注册副作用函数
+        const registEffect = (fn) => {
+            activeEffect = fn;
+            fn();
+        }
+
+        // 储存副作用函数的桶(使用WeakMap的数据结构,用对象来做键，其值是一个map，该map中的键是对象的属性，对应的值是对应副作用函数的集合)
+        const effectBucket = new WeakMap();
+
+        // 封装 track 函数，用于在读取属性值时，为指定对象的某个属性值添加副作用函数
+        const track = (target, key) => {
+            // 如果没有对应的副作用函数，那么就直接返回对应的属性值
+            if(!activeEffect) return target[key];
+
+            let depsMap = effectBucket.get(target);
+            if(!depsMap) {
+                // 如果该对象在effectBucket中，或没有depsMap，则新建一个map与之进行关联
+                effectBucket.set(target, (depsMap = new Map()))
+            }
+
+            // 再从depsMap中根据属性取出与其绑定的副作用函数集合
+            let deps = depsMap.get(key);
+            if(!deps) {
+                // 如果该属性没有对应的副作用函数集合，那么新建一个集合
+                depsMap.set(key, (deps = new Set()));
+            }
+
+            // 将副作用函数添加到与当前属性关联的集合中
+            deps.add(activeEffect);
+        }
+
+        // 封装 trigger 函数，用于在设置属性值时，重新执行其相关联的副作用函数
+        const trigger = (target, key) => {
+            const depsMap = effectBucket.get(target);
+            if(!depsMap) return;
+
+            const deps = depsMap.get(key);
+            deps?.forEach(fn => fn());
+        }
+
+        // 原数组的代理
+        const dataProxy = new Proxy(
+            data,
+            {
+                get(target, key) {
+                    track(target, key);
+                    return target[key];
+                },
+                set(target, key, newval) {
+                    target[key] = newval;
+                    trigger(target, key);
+                }
+            }
+        )
+        
+        // 初始阶段时，调用 registEffect 来注册副作用函数并执行一次
+        registEffect(updateTitle)
+
+        inp.addEventListener('input', (e) => {
+            dataProxy.content = inp.value;
+        })
+    </script>
+</body>
+</html>

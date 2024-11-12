@@ -36,6 +36,10 @@
                 justify-content: center;
                 align-items: center;
             }
+            .svgimg {
+                width: 300px;
+                height: 230px;
+            }
         }
     </style>
 </head>
@@ -43,7 +47,7 @@
     <div class="container—1 container"></div>
     <div class="container-2 container">
         <div class="box">
-            <img class="svg" data-src="../999-static/image_svg/001.svg" src="" alt="">
+            <img class="svgimg" data-src="../999-static/image_svg/001.svg" src="#" alt="">
         </div>
     </div>
     <script>
@@ -51,39 +55,40 @@
         const BASE_PATH = '../999-static/image_svg/';
 
         const container_1 = document.querySelector('.container—1');
-        const container_2 = document.querySelector('.container-2');
 
-        const IO_1 = new IntersectionObserver((entries) => {
+        // 实现图片的懒加载
+        const IO_1 = new IntersectionObserver((entries, observe) => {
             entries.forEach(e => {
-                console.log(e);
                 if (e.isIntersecting) {
-                    e.target.src = e.target.dataset.src
+                    e.target.src = e.target.dataset.src;
+                    observe.unobserve(e.target);
                 }
             })
         })
-
         for(let i = 1 ; i <= 20 ; i++) {
             const img = document.createElement('img');
             img.setAttribute('data-src', `${BASE_PATH}${(i + '').padStart(3, '0')}.svg`);
-            img.setAttribute('src', '');
+            img.setAttribute('src', '#');
             img.classList.add('svg', `svg-${i}`);
             container_1.appendChild(img);
             IO_1.observe(img);
         }
 
 
-        const IO_2 = new IntersectionObserver((entries) => {
-            entries.forEach(e => {
-                if(e.isIntersecting) {
-                    console.log(e);
-                    e.target.src = e.target.dataset.src;
-                }
-            })
-        }, {
-            threshold: 0.5
-        })
-
-        IO_2.observe(document.querySelector('.cent-svg'));
+        const IO_2 = new IntersectionObserver(
+            (entries, observe) => {
+                entries.forEach(e => {
+                    if(e.isIntersecting) {
+                        e.target.src = e.target.dataset.src;
+                        observe.unobserve(e.target);
+                    }
+                })
+            }, {
+                root: document.querySelector('.container—2'),       // 指定父容器
+                threshold: 0.5,                                     // 指定阈值 
+            }
+        )
+        IO_2.observe(document.querySelector('.svgimg'));
 
     </script>
 </body>

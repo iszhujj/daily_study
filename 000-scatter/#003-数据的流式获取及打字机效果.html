@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据的流式获取</title>
+    <style>
+        #data-show {
+            width: 500px;
+            border: 1px solid rgb(248, 144, 248);
+            min-height: 300px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="data-show"></div>
+    </div>
+<script>
+    // 打字机构造函数
+    const typeWriter = (sourceElem) => {
+        const sourceElement = sourceElem;
+        let targetElement = sourceElem;             // 当前在哪个元素里打字
+        const waitToPrint = [];         // 等待打印的字符
+        let isPrinting = false;         // 是否正在打印
+
+        const addChunk = (chunk) => {   // 需要打印的内容到达
+            !isPrinting ? paint(chunk) : waitToPrint.push(chunk);
+        };
+
+        // 打字效果
+        const writeAnimation = (arr, index, callback) => {
+            requestAnimationFrame(() => {
+                targetElement.innerText += arr[index] || '';
+                index < arr.length ? writeAnimation(arr, index + 1, callback) : callback();
+            });
+        };
+
+        // 增加换行并缩进(由于每次获取到的流的内容不能明确，因此换行和缩进可能每次都会不一样)
+        const brAndPushIndentCheck = (chunk) => {
+            if(chunk.indexOf('<br><indent>') === 0 || chunk.indexOf('<indent>') === 0) {
+                const p = document.createElement('p');
+                p.style = 'text-indent: 2rem;'
+                sourceElement.appendChild(p);
+                targetElement = p;
+            }
+            return chunk.replaceAll('<br>', '').replaceAll('<indent>', '');
+        }
+
+        const paint = (chunk) => {      // 开始打印
+            isPrinting = true;          // 上锁
+            chunk = brAndPushIndentCheck(chunk.replace('\s', ''));
+            const charArr = chunk.split('');
+            writeAnimation(charArr, 0, () => {
+                isPrinting = false;      // 解锁
+                // 查看是否还有需要打印的内容
+                waitToPrint.length > 0 && paint(waitToPrint.shift());
+            });
+        }
+        return addChunk;
+    }
+
+    (async () => {
+        const dataShow = document.getElementById("data-show");
+        const target = "http://localhost:3001/scatter-003";     // see 998-express-for-test
+        const req = await fetch(target);                // 请求体到后端后就会返回
+        const addChunk = typeWriter(dataShow);          // 创建打字机
+
+        // 从req.body上获取一个可读的流
+        const reader = req.body.getReader();
+
+        // 创建一个文本解码器用来解码数据的文本编码
+        const textDecoder = new TextDecoder();
+
+        // 读取一小段数据。done表示数据是否读取完毕；value是一个类型化数组，保存着这一小块数据的文本编码
+        do {
+            var {done, value} = await reader.read();
+            // 解码成文本
+            const chunk = textDecoder.decode(value);
+            console.log(chunk);
+
+            // 添加到打字机中
+            addChunk(chunk);
+        } while(!done);
+    })();
+</script>
+</body>
+</html>

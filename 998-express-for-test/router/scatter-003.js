@@ -34,4 +34,10 @@ scatter003.get('/', (req, res) => {
     })
 });
 
+// 一次性返回数据
+scatter003.get('/once', (req, res) => {
+    const data = cqb.repeat(10).trim();
+    res.json({data});
+})
+
 exports.scatter003 = scatter003;

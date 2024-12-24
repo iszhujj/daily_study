@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络请求与响应进度监控</title>
+</head>
+<body>
+    <script>
+        // xhr 响应进度监控
+        (() => {
+            const xhr = new XMLHttpRequest();
+
+            xhr.addEventListener('readystatechange', () => {
+                if(xhr.readyState === XMLHttpRequest.DONE) {
+                    if(xhr.status === 200) {
+                        console.log('请求成功', xhr.responseText);
+                    }
+                    else {
+                        console.log('请求失败');
+                    }
+                }
+            });
+            xhr.addEventListener('progress', e => {
+                console.log('进度', e.loaded, e.total);
+            });
+            xhr.open('GET', 'http://localhost:3001/scatter-003/once');
+            xhr.send();
+        });
+    </script>
+    <script>
+        // fetch 响应进度监控
+        (async () => {
+            const res = await fetch('http://localhost:3001/scatter-003/once');
+            // 响应头返回后 await 完成，此时 body 还未返回
+
+            // 获取响应体的长度
+            const total = +res.headers.get('content-length');
+            // 创建解析器
+            const decoder = new TextDecoder();
+            // 存储响应体内容
+            let body = '';
+
+            const reader = res.body.getReader();
+            // 已加载的数据
+            let loader = 0;
+            while(true) {
+                const {done, value} = await reader.read()
+                if(done) {
+                    break;
+                }
+                loader += value.length;
+                console.log('进度', loader, total);
+                body += decoder.decode(value);
+            }
+            console.log('获取响应结果完成', body);
+        });
+    </script>
+    <script>
+        (() => {
+            const data = {
+                name: '张三',
+                age: 18,
+                gender: 'male',
+            };
+
+            // xhr 监控请求的进度
+            const xhr = new XMLHttpRequest();
+
+            xhr.addEventListener('readystatechange', () => {
+                if(xhr.readyState === XMLHttpRequest.DONE) {
+                    if(xhr.status === 200) {
+                        console.log('请求成功', xhr.responseText);
+                    }
+                    else {
+                        console.log('请求失败');
+                    }
+                }
+            });
+            xhr.upload.addEventListener('progress', e => {
+                console.log('上传进度', e.loaded, e.total);
+            })
+            xhr.open('POST', 'http://localhost:3001/common/test-post');
+            // 设置请求头
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify(data));
+        })();
+    </script>
+</body>
+</html>

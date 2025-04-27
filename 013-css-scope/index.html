@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        @scope(.p-1) {
+            :scope {
+                color: red;
+            }
+            p{
+                background-color: #666;
+                color: #fff;
+            }
+        }
+        @scope(.p-2) {
+            :scope {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="p-1">
+            <p>你好 p-1</p>
+        </div>
+        <div class="p-2">
+            <p>你好 p-2</p>
+        </div>
+    </div>
+</body>
+</html>

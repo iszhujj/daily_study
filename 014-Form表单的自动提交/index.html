@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test Form</title>
+</head>
+<body>
+    <!-- 提交后，会跳转到action -->
+    <Form id="form">
+        <div>
+            <label for="username">username</label>
+            <input type="text" id="username" name="username" placeholder="请输入用户名">
+        </div>
+        <div>
+            <label for="password">password</label>
+            <input type="password" id="password" name="password" placeholder="请输入密码">
+        </div>
+        <button type="submit">submit</button>
+    </Form>
+    <script>
+        const form = document.getElementById('form')
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = e.target[0].value;
+            const password = e.target[1].value;
+
+            // const username = document.getElementById('username').value
+            // const password = document.getElementById('password').value
+
+            console.log(e, username, password);
+            // 发送请求即可
+            fetch('http://localhost:3001/common/test-form', {
+                method: 'ok',
+                data: {
+                    username,
+                    password
+                }
+            }).then(res => res.json())
+            .then(res => {
+                console.log(res);
+            })
+        })
+    </script>
+</body>
+</html>

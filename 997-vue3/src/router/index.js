@@ -12,6 +12,12 @@ const router = createRouter({
             component: () => import('../views/NetworkConnectionTest.vue')
         },
         {
+            // 自定义指令
+            path: '/custom-directive',
+            name: 'CustomDirective',
+            component: () => import('../views/CustomDirective.vue')
+        },
+        {
             path: '/:pathMatch(.*)*',
             redirect: '/network-connection-test'
         }

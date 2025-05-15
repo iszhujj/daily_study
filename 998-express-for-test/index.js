@@ -1,9 +1,9 @@
 const express = require('express');
-
 const app = express();
 
 const { scatter003 } = require('./router/scatter-003');
 const { commonRouter } = require('./router/common');
+const { jsonpRouter } = require('./router/jsonp');
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -19,6 +19,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use('/scatter-003', scatter003);
 // 通用测试接口
 app.use('/common', commonRouter);
+// jsonp 测试接口
+app.use('/jsonp', jsonpRouter);
 
 app.use((req, res) => {
     res.status(404).send('--- Not Found ---');

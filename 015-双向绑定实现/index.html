@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双向绑定的实现</title>
+</head>
+<body>
+    <input type="text" name="" id="inp">
+    <h1 id="title"></h1>
+    <script>
+        const inp = document.getElementById('inp');
+        const title = document.getElementById('title');
+
+        inp.addEventListener('input', (e) => {
+            title.innerText = inp.value;                // 视为视图到模型的绑定
+        });
+
+        setInterval(() => {
+            inp.value !== 'hello' ? inp.value = 'hello' : null;
+            title.innerText = inp.value;                // 视为模型到视图的绑定
+        }, 10000);
+    </script>
+</body>
+</html>
